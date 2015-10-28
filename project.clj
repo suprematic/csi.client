@@ -1,0 +1,26 @@
+(defproject
+ csi "0.1.0-SNAPSHOT"
+ :plugins [
+           [lein-cljsbuild "1.0.3"]
+           [lein-ancient "0.6.7"]]
+
+ :hooks  [leiningen.cljsbuild]
+
+ :dependencies [[org.clojure/clojure "1.7.0"]
+                [org.clojure/clojurescript "1.7.122"]
+                [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                [com.cognitect/transit-cljs "0.8.225"]
+                [shodan "0.4.2"]
+                [jarohen/chord "0.6.0"]]
+
+
+ :source-paths  ["src/cljs"]
+
+ :cljsbuild {:builds  [{:id "dev"
+                        :source-paths ["src/cljs"]
+                        :compiler {:output-dir "static/js/compiled"
+                                   :output-to  "static/js/compiled/csi.js"
+                                   :source-map "static/js/compiled/csi.js.map"
+                                   :optimizations :none
+                                   :pretty-print true}}]}
+ )
