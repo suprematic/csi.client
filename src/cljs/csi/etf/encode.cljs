@@ -96,6 +96,7 @@
 
 (defn encode-pid [stream {:keys [node id serial creation]}]
   (-> stream
+    (write-uint8 (tags :pid))
     (encode-term node)
     (write-uint32 id)
     (write-uint32 serial)
