@@ -1,7 +1,4 @@
-(ns csi.etf.decode
-  (:require
-    [shodan.console :as log])
-)
+(ns csi.etf.decode)
 
 (def tags {
   70  :new-float

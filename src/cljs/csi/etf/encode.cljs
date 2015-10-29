@@ -1,7 +1,6 @@
 (ns csi.etf.encode
   (:require [csi.etf.decode :as decode]
-      [shodan.console :as log]
-      [clojure.set :as set]))
+    [clojure.set :as set]))
 
 (def tags
   (set/map-invert decode/tags))

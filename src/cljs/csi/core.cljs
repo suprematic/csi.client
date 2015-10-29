@@ -47,7 +47,8 @@
               (assert function "invalid function")
 
               (async/tap replies-mult replies)
-              (>! socket (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
+              (>! socket
+                (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
 
               (loop []
                 (let [[rcorrelatin return] (<! replies)]
@@ -97,12 +98,8 @@
   (go-loop []
     (when-let [msg (<! mbox)]
       (log/info (str msg))
-
       (close! mbox)
-
       (recur))
-
-
   )
 )
 
