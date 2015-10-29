@@ -10,7 +10,7 @@
     [cljs.core.async.macros :refer [go alt! go-loop]]))
 
 (defprotocol IErlangMBox
-;  (close! [_self])
+  (close! [_self])
   (send! [_ pid message])
   (call* [_ func params])
   (self  [_]))
@@ -23,7 +23,10 @@
       (when-let [message (:message (<! socket))]
         (let [[type body] (etf/decode message)]
           (>! (case type :message messages :reply replies) body)
-          (recur))))
+          (recur)))
+      (log/debug "web socket closed")
+      (async/close! messages)
+      (async/close! replies))
 
     (reify
       p/ReadPort
@@ -34,14 +37,17 @@
         (self [_]
           self)
 
+        (close! [_]
+          (async/close! socket))
+
         (call* [_ func params]
           (go
             (let [replies (async/chan) correlation (swap! correlation inc)
                   module (namespace func) function (name func)]
-              (assert (and module function) "invalid function")
+              (assert function "invalid function")
 
               (async/tap replies-mult replies)
-              (>! socket (etf/encode [:call correlation [(keyword module) (keyword function)] (apply list params)]))
+              (>! socket (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
 
               (loop []
                 (let [[rcorrelatin return] (<! replies)]
@@ -63,15 +69,17 @@
           (erlang-mbox* socket body)
           (recur))))))
 
+
+; tests and examples
 (defn run-mbox [mbox]
-  (go-loop []
+  #_(go-loop []
     (<! (async/timeout 1000))
 
     (send! mbox (self mbox) [1 2 3 4])
     (recur)
   )
 
-  (go-loop []
+  #_(go-loop []
     (<! (async/timeout 1000))
     (let [result (<! (call* mbox :erlang/now []))]
       (log/info (str "call result: " result))
@@ -80,13 +88,21 @@
     (recur)
   )
 
+  (go
+    (<! (call* mbox :send_after [1000 (self mbox) [:hello :world]]))
+    (log/info "set timer")
+  )
+
 
   (go-loop []
     (when-let [msg (<! mbox)]
       (log/info (str msg))
 
+      (close! mbox)
 
       (recur))
+
+
   )
 )
 
