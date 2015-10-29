@@ -13,7 +13,7 @@
 (defprotocol IErlangMBox
 ;  (close! [_self])
 
-  (send! [_ message])
+  (send! [_ pid message])
   (self  [_])
 )
 
@@ -30,8 +30,8 @@
       (self [_]
         self)
 
-      (send! [_ message]
-        (let [encoded (etf/encode message)]
+      (send! [_ pid message]
+        (let [encoded (etf/encode [:send pid message])]
           (go
             (>! channel encoded))))))
 
@@ -46,22 +46,26 @@
                          (>! ready (erlang-mbox* channel out body))
                          (async/close! ready))
               :message (>! out body))))
-          (recur)))
-      (log/info "web socket closed")
+          (recur))
 
-      (async/close! out)
-    ready))
+      (log/info "web socket closed")
+      (async/close! out)) ready))
 
 
 (defn run-mbox [mbox]
-  (send! mbox [1 2 3 4 (self mbox)])
+  (go-loop []
+    (<! (async/timeout 1000))
+    (send! mbox (self mbox) [1 2 3 4])
+
+    (recur)
+  )
+
 
   (go-loop []
     (when-let [msg (<! mbox)]
-      ;(log/info
-        ;(str (bert/decode msg))
+      (log/info (str msg))
 
-      ;)
+
       (recur))
   )
 )
