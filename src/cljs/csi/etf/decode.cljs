@@ -15,6 +15,7 @@
   107 :string
   108 :list
   109 :binary
+  114 :new-reference
   115 :small-atom
   116 :map
   131 :term})
@@ -31,10 +32,10 @@
   111 :unsupported ; :large_big
   112 :unsupported ; :new-fun
   113 :unsupported ; :export
-  114 :unsupported ; :new-reference
 })
 
 (defrecord Pid [node id serial creation])
+(defrecord Ref [len node creation id])
 
 (defn skip [dv offset]
   (js/DataView. (.-buffer dv) (+ offset (.-byteOffset dv))))
@@ -81,6 +82,15 @@
         serial (uint32 data) data (skip data 4)
         creation (uint8 data)]
     [(Pid. node id serial creation) (+ size 9)]))
+
+
+(defmethod decode* :new-reference [_ data]
+  (let [len (uint16 data) data (skip data 2)
+        [node size] (decode* :term data) data (skip data size)
+        creation (uint8 data) data (skip data 1)
+        id (js/DataView. (.-buffer data) (.-byteOffset data) (* 4 len))]
+       [(Ref. len node creation id) (+ 2 size 1 (* 4 len))]))
+
 
 (defn decode-bytes [dv & {:keys [size-fn size-bytes]}]
   (let [size (size-fn dv)]
