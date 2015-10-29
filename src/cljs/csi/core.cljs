@@ -9,54 +9,74 @@
   (:require-macros
     [cljs.core.async.macros :refer [go alt! go-loop]]))
 
-
 (defprotocol IErlangMBox
 ;  (close! [_self])
-
   (send! [_ pid message])
-  (self  [_])
-)
+  (call* [_ func params])
+  (self  [_]))
 
+(defn erlang-mbox* [socket {:keys [self] :as params}]
+  (log/debug (str "creating mbox with params: " params))
 
-(defn erlang-mbox* [channel out {:keys [self] :as params}]
-  (log/debug (str "got setup message with params: " params))
-
-  (reify
-    p/ReadPort
-      (take! [_ handler]
-        (p/take! out handler))
-
-    IErlangMBox
-      (self [_]
-        self)
-
-      (send! [_ pid message]
-        (let [encoded (etf/encode [:send pid message])]
-          (go
-            (>! channel encoded))))))
-
-(defn erlang-mbox [channel]
-  (let [out (async/chan) ready (async/chan)]
+  (let [messages (async/chan) replies (async/chan) replies-mult (async/mult replies) correlation (atom 0)]
     (go-loop []
-      (when-let [frame (<! channel)]
-        (when-let [message (:message frame)]
-          (let [[type body] (etf/decode message)]
-            (case type
-              :setup   (do
-                         (>! ready (erlang-mbox* channel out body))
-                         (async/close! ready))
-              :message (>! out body))))
-          (recur))
+      (when-let [message (:message (<! socket))]
+        (let [[type body] (etf/decode message)]
+          (>! (case type :message messages :reply replies) body)
+          (recur))))
 
-      (log/info "web socket closed")
-      (async/close! out)) ready))
+    (reify
+      p/ReadPort
+        (take! [_ handler]
+          (p/take! messages handler))
 
+      IErlangMBox
+        (self [_]
+          self)
+
+        (call* [_ func params]
+          (go
+            (let [replies (async/chan) correlation (swap! correlation inc)
+                  module (namespace func) function (name func)]
+              (assert (and module function) "invalid function")
+
+              (async/tap replies-mult replies)
+              (>! socket (etf/encode [:call correlation [(keyword module) (keyword function)] (apply list params)]))
+
+              (loop []
+                (let [[rcorrelatin return] (<! replies)]
+                  (if (= correlation rcorrelatin) ; TODO: timeout handling
+                    (do
+                      (async/untap replies-mult replies) return)
+                    (recur)))))))
+
+        (send! [_ pid message]
+          (let [encoded (etf/encode [:send pid message])]
+            (go
+              (>! socket encoded)))))))
+
+(defn erlang-mbox [socket]
+  (go-loop []
+    (when-let [message (:message (<! socket))]
+      (let [[type body] (etf/decode message)]
+        (if (= type :setup)
+          (erlang-mbox* socket body)
+          (recur))))))
 
 (defn run-mbox [mbox]
   (go-loop []
     (<! (async/timeout 1000))
-    (send! mbox (self mbox) [1 2 3 4])
 
+    (send! mbox (self mbox) [1 2 3 4])
+    (recur)
+  )
+
+  (go-loop []
+    (<! (async/timeout 1000))
+    (let [result (<! (call* mbox :erlang/now []))]
+      (log/info (str "call result: " result))
+
+    )
     (recur)
   )
 
