@@ -9,7 +9,6 @@
  :dependencies [[org.clojure/clojure "1.7.0"]
                 [org.clojure/clojurescript "1.7.122"]
                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                [com.cognitect/transit-cljs "0.8.225"]
                 [shodan "0.4.2"]
                 [jarohen/chord "0.6.0"]]
 
