@@ -62,55 +62,20 @@
             (go
               (>! socket encoded)))))))
 
-(defn erlang-mbox [socket]
-  (go-loop []
-    (when-let [message (:message (<! socket))]
-      (let [[type body] (etf/decode message)]
-        (if (= type :setup)
-          (erlang-mbox* socket body)
-          (recur))))))
-
-
-; tests and examples
-(defn run-mbox [mbox]
-  #_(go-loop []
-    (<! (async/timeout 1000))
-
-    (send! mbox (self mbox) [1 2 3 4])
-    (recur)
-  )
-
-  #_(go-loop []
-    (<! (async/timeout 1000))
-    (let [result (<! (call* mbox :erlang/now []))]
-      (log/info (str "call result: " result))
-
-    )
-    (recur)
-  )
-
+(defn erlang-mbox [url]
   (go
-    (<! (call* mbox :send_after [1000 (self mbox) [:hello :world]]))
-    (log/info "set timer")
-  )
+    (if-let [socket (:ws-channel (<! (chord/ws-ch url {:format :str})))]
+      (loop []
+        (when-let [message (:message (<! socket))]
+          (let [[type body] (etf/decode message)]
+            (if (= type :setup)
+              (erlang-mbox* socket body)
+              (recur))))))))
 
 
-  (go-loop []
-    (when-let [msg (<! mbox)]
-      (log/info (str msg))
-      (close! mbox)
-      (recur))
-  )
-)
-
-
-(defn main [& _args]
-  (log/info "starting connection")
-
-  (go
-    (let [{:keys [ws-channel error]} (<! (chord/ws-ch "ws://localhost:8080/ws" {:format :str}))]
-      (if-not error
-        (let [mbox (<! (erlang-mbox ws-channel))]
-          (run-mbox mbox))
-        (js/console.log "Error:" (pr-str error)))))
-)
+(defn string-to-list [s]
+  (apply list
+    (reduce
+      (fn [acc ix]
+        (conj acc
+          (.charCodeAt s ix))) [] (range (count s)))))
