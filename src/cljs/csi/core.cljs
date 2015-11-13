@@ -51,11 +51,12 @@
                 (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
 
               (loop []
-                (let [[rcorrelatin return] (<! replies)]
-                  (if (= correlation rcorrelatin) ; TODO: timeout handling
-                    (do
-                      (async/untap replies-mult replies) return)
-                    (recur)))))))
+                (when-let [reply (<! replies)]
+                  (let [[rcorrelatin return] reply]
+                    (if (= correlation rcorrelatin) ; TODO: timeout handling
+                      (do
+                        (async/untap replies-mult replies) return)
+                      (recur))))))))
 
         (send! [_ pid message]
           (let [encoded (etf/encode [:send pid message])]
@@ -72,6 +73,8 @@
               (erlang-mbox* socket body)
               (recur))))))))
 
+(defn list-to-string [l]
+  (apply str (map #(.fromCharCode js/String %) l)))
 
 (defn string-to-list [s]
   (apply list
