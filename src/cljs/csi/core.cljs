@@ -62,7 +62,7 @@
             (go
               (>! socket encoded)))))))
 
-(defn erlang-mbox [url]
+(defn mbox [url]
   (go
     (if-let [socket (:ws-channel (<! (chord/ws-ch url {:format :str})))]
       (loop []
