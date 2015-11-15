@@ -12,6 +12,7 @@
   107 :string
   108 :list
   109 :binary
+  110 :small-big
   114 :new-reference
   115 :small-atom
   116 :map
@@ -25,11 +26,10 @@
   117 :unsupported ; :fun
   118 :unsupported ; :atom-utf
   119 :unsupported ; :small-atom-utf
-  110 :unsupported ; :small_big
   111 :unsupported ; :large_big
   112 :unsupported ; :new-fun
   113 :unsupported ; :export
-})
+                  })
 
 (defrecord Pid [node id serial creation])
 (defrecord Ref [len node creation id])
@@ -72,6 +72,17 @@
 
 (defmethod decode* :nil [_ data]
   ['() 0])
+
+(defmethod decode* :small-big [_ data]
+  (let [len   (uint8 data) data (skip data 1)
+        sign  (uint8 data) data (skip data 1)
+        bytes (map #(.getUint8 data %) (range len))
+        parts (map (fn [num pos]
+                     (* num (.pow js/Math 256 pos))) bytes (range len))
+        value (reduce + parts)]
+
+    [(case sign 0 value 1 (- value)) (+ len 2)]))
+
 
 (defmethod decode* :pid [_ data]
   (let [[node size] (decode* :term data) data (skip data size)
