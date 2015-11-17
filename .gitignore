@@ -4,5 +4,6 @@ static
 .DS_Store
 
 target*
+pom*
 .idea*
 csi.iml

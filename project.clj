@@ -1,7 +1,10 @@
-(defproject
- csi "0.1.0-SNAPSHOT"
- :plugins [
-           [lein-cljsbuild "1.0.3"]
+(defproject csi "0.1.2"
+ :description "ClojureScript interface to Erlang"
+ :url "https://github.com/suprematic/csi.client"
+ :license {:name "Eclipse Public License"
+           :url "http://www.eclipse.org/legal/epl-v10.html"}
+
+ :plugins [[lein-cljsbuild "1.0.3"]
            [lein-ancient "0.6.7"]]
 
  :hooks  [leiningen.cljsbuild]
@@ -21,5 +24,4 @@
                                    :output-to  "static/js/compiled/csi.js"
                                    :source-map "static/js/compiled/csi.js.map"
                                    :optimizations :none
-                                   :pretty-print true}}]}
- )
+                                   :pretty-print true}}]})
