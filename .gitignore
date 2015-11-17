@@ -3,6 +3,8 @@ static
 .lein-repl-history
 .DS_Store
 
+resources*
+test*
 target*
 pom*
 .idea*
