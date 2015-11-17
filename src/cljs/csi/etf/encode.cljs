@@ -49,6 +49,30 @@
     (write-uint8 (tags :integer))
     (write-int32 value)))
 
+
+;;; large-big and small-big
+(defn- data->bytes [data]
+  (if (= 0 data)
+    nil
+    (lazy-seq (cons (bit-and 255 data) (data->bytes (/ data 256) #_(bit-shift-right (+ 128 data) 8))))))
+
+(defn- extract-bytes [data length]
+  (reverse (take length (concat (data->bytes data) (repeat 0)))))
+
+(defn- taged-seq [tag & data]
+  (map byte (concat [(tags tag)] (apply concat data))))
+
+(defn encode-big-integer [stream bi]
+  (js/console.log "encode-big-integer" bi)
+  (let [sign  (if (< bi 0) 1 0)
+        bytes (data->bytes (js/Math.abs bi))
+        size  (count bytes)]
+    (reduce #(write-uint8 %1 %2) stream (if (> size 255)
+                                          (taged-seq :large-big (extract-bytes size 4) (extract-bytes sign 1) bytes)
+                                          (taged-seq :small-big (extract-bytes size 1) (extract-bytes sign 1) bytes)))))
+
+;;;;;;;;;;;;;;;;;
+
 (defn encode-float [stream value]
   (-> stream
     (write-uint8 (tags :new-float))
@@ -103,11 +127,16 @@
 
 (defn encode-term [stream term]
   (cond
+
     (and (integer? term) (>= term 0) (< term 255))
       (encode-small-integer stream term)
 
-    (integer? term)
+    (and (integer? term)  (>= term  -2147483648) (< term 2147483648))
       (encode-integer stream term)
+
+    ;; TODO: please check this
+    (.isSafeInteger js/Number term)
+      (encode-big-integer stream term)
 
     (number? term)
       (encode-float stream term)
