@@ -2,3 +2,7 @@ static
 .nrepl-port
 .lein-repl-history
 .DS_Store
+
+target*
+.idea*
+csi.iml
