@@ -1,4 +1,4 @@
-(defproject csi "0.1.2"
+(defproject csi "0.1.3"
  :description "ClojureScript interface to Erlang"
  :url "https://github.com/suprematic/csi.client"
  :license {:name "Eclipse Public License"
