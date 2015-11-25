@@ -146,18 +146,13 @@
   (convert-value
     (decode-counted data :count-fn uint32 :count-size 4 :tail-nil true) #(apply list %)))
 
-(defn- vector->set [v]
-  (if (= :set (first v))
-    (set (flatten (nth v 8)))
-    v))
-
 (defmethod decode* :small-tuple [_ data]
   (convert-value
-    (decode-counted data :count-fn uint8 :count-size 1) #(apply vector %) vector->set))
+    (decode-counted data :count-fn uint8 :count-size 1) #(apply vector %)))
 
 (defmethod decode* :large-tuple [_ data]
   (convert-value
-    (decode-counted data :count-fn uint32 :count-size 4) #(apply vector %) vector->set))
+    (decode-counted data :count-fn uint32 :count-size 4) #(apply vector %)))
 
 (defmethod decode* :map [_ data]
   (convert-value
