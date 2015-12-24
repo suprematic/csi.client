@@ -1,6 +1,6 @@
 (ns csi.etf.encode
   (:require [csi.etf.decode :as decode]
-    [clojure.set :as set]))
+            [clojure.set :as set]))
 
 (def tags
   (set/map-invert decode/tags))
@@ -135,7 +135,8 @@
       (encode-integer stream term)
 
     ;; TODO: please check this
-    (js/Number.isSafeInteger term)
+    ;; The safe integers consist of all integers from -(2^53 - 1) inclusive to 2^53 - 1 inclusive.
+    (and (integer? term)  (> term  -9007199254740992) (< term 9007199254740992))
       (encode-big-integer stream term)
 
     (number? term)
