@@ -135,7 +135,7 @@
       (encode-integer stream term)
 
     ;; TODO: please check this
-    (.isSafeInteger js/Number term)
+    (js/Number.isSafeInteger term)
       (encode-big-integer stream term)
 
     (number? term)
