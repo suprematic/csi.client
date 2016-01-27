@@ -20,7 +20,7 @@
   (let [[m f] (if (vector? fn-def)
                 [(first fn-def) (second fn-def)]
                 [nil fn-def])]
-    [m (namespace f) (name f)]))
+    [(or m :undefined) (namespace f) (name f)]))
 
 
 (defn erlang-mbox* [socket {:keys [self] :as params}]
