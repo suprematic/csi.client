@@ -12,8 +12,16 @@
 (defprotocol IErlangMBox
   (close! [_self])
   (send! [_ pid message])
-  (call* [_ func params])
+  (call* [_ fn-def params])
   (self  [_]))
+
+
+(defn- fn-def->meta-module-fn [fn-def]
+  (let [[m f] (if (vector? fn-def)
+                [(first fn-def) (second fn-def)]
+                [nil fn-def])]
+    [(or m :undefined) (namespace f) (name f)]))
+
 
 (defn erlang-mbox* [socket {:keys [self] :as params}]
   (log/debug (str "creating mbox with params: " params))
@@ -40,15 +48,16 @@
         (close! [_]
           (async/close! socket))
 
-        (call* [_ func params]
+        (call* [_ fn-def params]
           (go
-            (let [replies (async/chan) correlation (swap! correlation inc)
-                  module (namespace func) function (name func)]
+            (let [replies (async/chan) 
+                  correlation (swap! correlation inc)
+                  [meta-data module function] (fn-def->meta-module-fn fn-def)]
               (assert function "invalid function")
 
               (async/tap replies-mult replies)
               (>! socket
-                (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
+                (etf/encode [:call [correlation meta-data] [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
 
               (loop []
                 (when-let [reply (<! replies)]
