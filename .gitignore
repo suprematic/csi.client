@@ -9,3 +9,4 @@ target*
 pom*
 .idea*
 csi.iml
+/maven_repo/
