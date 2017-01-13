@@ -5,11 +5,13 @@
 (def tags
   (set/map-invert decode/tags))
 
+
 (defn make-stream []
-  (let [buffer (js/ArrayBuffer. 1024)]
+  (let [buffer (js/ArrayBuffer. (* 10 1024))]                      ;; set maximum buffer size
     { :buffer buffer
       :dv (js/DataView. buffer)
       :pos 0}))
+
 
 (defn get-buffer [{:keys [buffer pos]}]
   (.slice buffer 0 pos))
