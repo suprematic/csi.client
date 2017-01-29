@@ -10,7 +10,7 @@
                 [org.clojure/clojurescript "1.7.122"]
                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                 [shodan "0.4.2"]
-                [jarohen/chord "0.6.0"]]
+                [jarohen/chord "0.7.0"]]
 
 
  :source-paths  ["src/cljs"]
