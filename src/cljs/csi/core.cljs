@@ -1,13 +1,19 @@
 (ns csi.core
   (:require
     [cljs.core.async :as async]
-    [shodan.console :as log]
-    [chord.client :as chord]
-    [csi.etf.core :as etf]
+    [cljs.pprint     :as pprint]
+    [shodan.console  :as log]
+    [chord.client    :as chord]
+    [csi.etf.core    :as etf]
     [cljs.core.async.impl.protocols :as p])
 
   (:require-macros
     [cljs.core.async.macros :refer [go alt! go-loop]]))
+
+
+(defn- pprint-str [data]
+  (with-out-str (pprint/pprint data)))
+
 
 (defprotocol IErlangMBox
   (close! [_self])
@@ -15,10 +21,15 @@
   (call* [_ func params])
   (self  [_]))
 
-(defn erlang-mbox* [socket {:keys [self] :as params}]
-  (log/debug (str "creating mbox with params: " params))
+(defn- erlang-mbox* [socket {:keys [self] :as params} meta]
 
-  (let [messages (async/chan) replies (async/chan) replies-mult (async/mult replies) correlation (atom 0)]
+  (log/debug "creating mbox" (pprint-str {:params params, :meta meta}))
+
+  (let [messages (async/chan)
+        replies (async/chan)
+        replies-mult (async/mult replies)
+        correlation (atom 0)]
+
     (go-loop []
       (when-let [message (:message (<! socket))]
         (let [[type body] (etf/decode message)]
@@ -42,18 +53,21 @@
 
         (call* [_ func params]
           (go
-            (let [replies (async/chan) correlation (swap! correlation inc)
-                  module (namespace func) function (name func)]
+            (let [replies (async/chan)
+                  correlation-id (swap! correlation inc)
+                  header (merge meta {:correlation correlation-id})
+                  module (namespace func)
+                  function (name func)]
               (assert function "invalid function")
 
               (async/tap replies-mult replies)
               (>! socket
-                (etf/encode [:call correlation [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
+                (etf/encode [:call header [(keyword (or module :erlang)) (keyword function)] (apply list params)]))
 
               (loop []
                 (when-let [reply (<! replies)]
-                  (let [[rcorrelatin return] reply]
-                    (if (= correlation rcorrelatin) ; TODO: timeout handling
+                  (let [[reply-correlation return] reply]
+                    (if (= correlation-id reply-correlation) ; TODO: timeout handling
                       (do
                         (async/untap replies-mult replies) return)
                       (recur))))))))
@@ -63,14 +77,14 @@
             (go
               (>! socket encoded)))))))
 
-(defn mbox [url]
+(defn mbox [url & [meta]]
   (go
     (if-let [socket (:ws-channel (<! (chord/ws-ch url {:format :str})))]
       (loop []
         (when-let [message (:message (<! socket))]
           (let [[type body] (etf/decode message)]
             (if (= type :setup)
-              (erlang-mbox* socket body)
+              (erlang-mbox* socket body meta)
               (recur))))))))
 
 (defn list-to-string [l]

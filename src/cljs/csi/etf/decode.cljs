@@ -13,6 +13,7 @@
   108 :list
   109 :binary
   110 :small-big
+  111 :large-big
   114 :new-reference
   115 :small-atom
   116 :map
@@ -26,7 +27,6 @@
   117 :unsupported ; :fun
   118 :unsupported ; :atom-utf
   119 :unsupported ; :small-atom-utf
-  111 :unsupported ; :large_big
   112 :unsupported ; :new-fun
   113 :unsupported ; :export
                   })
