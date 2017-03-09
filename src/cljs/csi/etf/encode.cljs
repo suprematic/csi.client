@@ -5,8 +5,8 @@
 (def tags
   (set/map-invert decode/tags))
 
-(defn make-stream []
-  (let [buffer (js/ArrayBuffer. 1024)]
+(defn make-stream [size]
+  (let [buffer (js/ArrayBuffer. size)]
     { :buffer buffer
       :dv (js/DataView. buffer)
       :pos 0}))
@@ -17,25 +17,35 @@
 (defn seek-relative [stream offset]
   (update-in stream [:pos] + offset))
 
-(defn write-uint8 [{:keys [dv pos] :as stream} b]
-  (.setUint8 dv pos b)
-  (seek-relative stream 1))
+(defn ensure-storage [{:keys [buffer pos] :as stream} datum-size]
+  (let [size (.-byteLength buffer)
+        avail (- size pos)]
+    (if (> avail datum-size)
+      stream
+      (let [stream' (make-stream (* 2 size))
+            buffer' (stream' :buffer)]
+        (.set (js/Uint8Array. buffer') (js/Uint8Array. buffer))
+        (assoc stream' :pos pos)))))
 
-(defn write-uint16 [{:keys [dv pos] :as stream} b]
-  (.setUint16 dv pos b)
-  (seek-relative stream 2))
+(defn write-datum [stream js-method value-size value]
+  (let [{:keys [dv pos] :as stream'} (ensure-storage stream value-size)]
+    (js-invoke dv js-method pos value)
+    (seek-relative stream' value-size)))
 
-(defn write-uint32 [{:keys [dv pos] :as stream} value]
-  (.setUint32 dv pos value)
-  (seek-relative stream 4))
+(defn write-uint8 [stream value]
+  (write-datum stream "setUint8" 1 value))
 
-(defn write-int32 [{:keys [dv pos] :as stream} value]
-  (.setInt32 dv pos value)
-  (seek-relative stream 4))
+(defn write-uint16 [stream value]
+  (write-datum stream "setUint16" 2 value))
 
-(defn write-float64 [{:keys [dv pos] :as stream} value]
-  (.setFloat64 dv pos value)
-  (seek-relative stream 8))
+(defn write-uint32 [stream value]
+  (write-datum stream "setUint32" 4 value))
+
+(defn write-int32 [stream value]
+  (write-datum stream "setInt32" 4 value))
+
+(defn write-float64 [stream value]
+  (write-datum stream "setFloat64" 8 value))
 
 ;encoders
 
@@ -82,9 +92,12 @@
       (range (count name)))))
 
 (defn encode-array-buffer [stream buffer]
+  (.log js/console "encode-array-buffer call")
   (let [length (.-byteLength buffer)]
+    (.log js/console "byteLength is" length ", while length is " (.-length buffer))
     (reduce
       (fn [stream pos]
+        ;(.log js/console "calling write-uint8 pos=" pos)
         (write-uint8 stream (aget buffer pos)))
 
       (-> stream
@@ -142,8 +155,10 @@
     :else
       (throw (str "don't know how to encode: " (str term)))))
 
+(def initial-stream-size 1024)
+
 (defn encode* [term]
-  (-> (make-stream)
+  (-> (make-stream initial-stream-size)
     (write-uint8 (tags :term))
     (encode-term term)
     get-buffer))
