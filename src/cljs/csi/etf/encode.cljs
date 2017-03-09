@@ -92,12 +92,9 @@
       (range (count name)))))
 
 (defn encode-array-buffer [stream buffer]
-  (.log js/console "encode-array-buffer call")
   (let [length (.-byteLength buffer)]
-    (.log js/console "byteLength is" length ", while length is " (.-length buffer))
     (reduce
       (fn [stream pos]
-        ;(.log js/console "calling write-uint8 pos=" pos)
         (write-uint8 stream (aget buffer pos)))
 
       (-> stream
