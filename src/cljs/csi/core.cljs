@@ -22,7 +22,12 @@
     (go-loop []
       (when-let [message (:message (<! socket))]
         (let [[type body] (etf/decode message)]
-          (>! (case type :message messages :reply replies) body)
+          (case type
+            :message (>! messages body)
+            :reply (>! replies body)
+            (do
+              (log/error (str "closing socket: got message of unexpected type " type))
+              (async/close! socket)))
           (recur)))
       (log/debug "web socket closed")
       (async/close! messages)
