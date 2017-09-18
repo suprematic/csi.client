@@ -57,10 +57,16 @@
 
               (loop []
                 (when-let [reply (<! replies)]
-                  (let [[rcorrelatin return] reply]
-                    (if (= correlation rcorrelatin) ; TODO: timeout handling
+                  (let [[reply-correlation return] reply]
+                    (if (= correlation reply-correlation) ; TODO: timeout handling
                       (do
-                        (async/untap replies-mult replies) return)
+                        (async/untap replies-mult replies)
+                        ; Protection from deadlocks.
+                        ; Look at "https://dev.clojure.org/jira/browse/ASYNC-58" for details.
+                        (go-loop []
+                          (if (some? (<! replies))
+                            (recur)))
+                        return)
                       (recur))))))))
 
         (send! [_ pid message]
